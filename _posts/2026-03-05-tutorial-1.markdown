@@ -1,0 +1,99 @@
+---
+layout: post
+title:  "Tutorial 1"
+date:   2026-03-05 19:00:00 -0300
+categories: jekyll update
+---
+
+Link para o Tutorial 1: [Setting up a test environment for Linux Kernel Dev using QEMU and libvirt][tutorial-1]
+
+Como o próprio nome já diz, o primeiro tutorial nos ensina a realizar o setup inical no QEMU e do libvirt para desenvolvimento do Kernel Linux.
+- [QEMU][qemu]: Emulador utilizado para subir máquinas virtuais.
+- [libvirt][libvirt]: Gerenciador de máquinas virtuais.
+- [Kernel Linux][linux-kernel]: Núcleo utilizado por diversos sistemas operacionais.
+
+Já que a finalidade desse blog é contar como foi a minha experiência seguindo o tutorial, vamos lá...
+
+##### **PS:** Vou fazer comentários apenas sobre os passos em que tive algum tipo de problema.
+
+#### **Passo 1:**
+
+Tive problemas para inserir o usuário no grupo libvirt-qemu. No tutorial é informado que basta fazer logout + login e seguir, mas precisei reiniciar minha máquina para que as configurações fossem persistidas.
+
+#### **Passo 2:**
+
+**Passo 2.1:** O único problema que tive foi para baixar a imagem. A imagem informada no tutorial não está mais disponível, então baixei a <http://cdimage.debian.org/cdimage/cloud/bookworm/daily/latest/debian-12-nocloud-arm64-daily.qcow2>.
+
+**Passo 2.3:** cometi um erro no script launch_vm_qemu, invés de vda2 coloquei \<vda2\> sem perceber, ai estava tomando o seguinte erro:
+{% highlight shell %}
+...
+Begin: Running /scripts/local-block ... done.
+Begin: Running /scripts/local-block ... done.
+Begin: Running /scripts/local-block ... done.
+Begin: Running /scripts/local-block ... done.
+Begin: Running /scripts/local-block ... done.
+Begin: Running /scripts/local-block ... done.
+done.
+Gave up waiting for root file system device.  Common problems:
+ - Boot args (cat /proc/cmdline)
+   - Check rootdelay= (did the system wait long enough?)
+ - Missing modules (cat /proc/modules; ls /dev)
+ALERT!  /dev/<vda2> does not exist.  Dropping to a shell!
+(initramfs) ^[[Aqemu-system-aarch64: terminating on signal 15 from pid 9100 ()
+{% endhighlight %}
+Acabei demorando um pouco para perceber que o erro era por conta dos sinais de maior que e menor que. Mas no final consegui subir a vm com sucesso:
+![vm rodando em um terminal](/assets/images/vm.png)
+
+#### **Passo 3:** 
+Para que esse passo desse certo precisei instalar o openssh-server na vm e iniciar o serviço do ssh:
+{% highlight shell %}
+sudo apt-get update
+sudo apt-get install openssh-server
+sudo systemctl enable ssh
+{% endhighlight %}
+
+#### **Passo 5:** 
+Fiquei um pouco confuso sobre onde era para rodar o comando, já que no tutoral não existe indicação de @host nem de @VM no snippet:
+{% highlight shell %}
+sudo EDITOR=vim; sudo virsh edit iio-arm64
+{% endhighlight %}
+Porém fica evidente que deveria ser no host devido ao uso do comando virsh. 
+
+Além disso o nome `io-arm64` não segue o padrão `arm64` adotado no resto do tutorial, o que também deixa um pouco confuso.
+
+Após rodar o comando e instalar o virtiofs no host tive que reiniciar a vm para que a configuração do filesystem compartilhado fosse persistida. O que funcionou perfeitamente:
+
+![evidência de filesystem compartilhado](/assets/images/shared_fs.png)
+
+### **Considerações finais**
+Achei o tutorial bem explicativo, no geral nenhum dos problemas encontrados foi complicado de resolver.
+
+[tutorial-1]: https://flusp.ime.usp.br/kernel/qemu-libvirt-setup/
+[qemu]: https://www.qemu.org/
+[libvirt]: https://libvirt.org/
+[linux-kernel]: https://github.com/torvalds/linux
+
+
+<!-- You’ll find this post in your `_posts` directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run `jekyll serve`, which launches a web server and auto-regenerates your site when a file is updated.
+
+Jekyll requires blog post files to be named according to the following format:
+
+`YEAR-MONTH-DAY-title.MARKUP`
+
+Where `YEAR` is a four-digit number, `MONTH` and `DAY` are both two-digit numbers, and `MARKUP` is the file extension representing the format used in the file. After that, include the necessary front matter. Take a look at the source for this post to get an idea about how it works.
+
+Jekyll also offers powerful support for code snippets:
+
+{% highlight ruby %}
+def print_hi(name)
+  puts "Hi, #{name}"
+end
+print_hi('Tom')
+#=> prints 'Hi, Tom' to STDOUT.
+{% endhighlight %}
+
+Check out the [Jekyll docs][jekyll-docs] for more info on how to get the most out of Jekyll. File all bugs/feature requests at [Jekyll’s GitHub repo][jekyll-gh]. If you have questions, you can ask them on [Jekyll Talk][jekyll-talk].
+
+[jekyll-docs]: https://jekyllrb.com/docs/home
+[jekyll-gh]:   https://github.com/jekyll/jekyll
+[jekyll-talk]: https://talk.jekyllrb.com/ -->
