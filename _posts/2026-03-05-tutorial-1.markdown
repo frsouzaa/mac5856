@@ -42,7 +42,7 @@ ALERT!  /dev/<vda2> does not exist.  Dropping to a shell!
 (initramfs) ^[[Aqemu-system-aarch64: terminating on signal 15 from pid 9100 ()
 {% endhighlight %}
 Acabei demorando um pouco para perceber que o erro era por conta dos sinais de maior que e menor que. Mas no final consegui subir a vm com sucesso:
-![vm rodando em um terminal]({{ site.baseurl }}/assets/images/vm.png)
+![vm rodando em um terminal]({{ site.baseurl }}/assets/images/t1_vm.png)
 
 #### **Passo 3:** 
 Para que esse passo desse certo precisei instalar o openssh-server na vm e iniciar o serviço do ssh:
@@ -63,7 +63,7 @@ Além disso o nome `io-arm64` não segue o padrão `arm64` adotado no resto do t
 
 Após rodar o comando e instalar o virtiofs no host tive que reiniciar a vm para que a configuração do filesystem compartilhado fosse persistida. O que funcionou perfeitamente:
 
-![evidência de filesystem compartilhado]({{ site.baseurl }}/assets/images/shared_fs.png)
+![evidência de filesystem compartilhado]({{ site.baseurl }}/assets/images/t1_shared_fs.png)
 
 ### **Considerações finais**
 Achei o tutorial bem explicativo, no geral nenhum dos problemas encontrados foi complicado de resolver.

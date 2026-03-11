@@ -1,0 +1,63 @@
+---
+layout: post
+title:  "Tutorial 2"
+date:   2026-03-09 19:00:00 -0300
+categories: jekyll update
+---
+
+Link para o Tutorial 2: [https://flusp.ime.usp.br/kernel/build-linux-for-arm-kw/][tutorial-2]
+
+Nesse tutorial aprendemos a compilar o kernel linux e depois realizar um boot em um máquina virtual utilizando esse kernel.
+
+Seguindo o conceito do blog vou discorrer apenas sobre os pontos do tutorial em que tive algum tipo de problema.
+
+#### **Passo 3:**
+
+Na primeira vez que segui o tutorial defini o IP da VM para o IP obtido através do comando:
+{% highlight shell %}
+sudo virsh net-dhcp-leases default
+{% endhighlight %}
+Que dentre as outras informações retornados, temos o IP 192.168.122.24/24, então rodei:
+{% highlight shell %}
+kw remote --add arm64 root@192.168.122.24 --set-default
+{% endhighlight %}
+Segui o tutorial até o passo 5 mas precisei desligar a minha máquina para tratar de outro assunto, quando retomei o tutorial notei que o comando `kw ssh` estava falhando pois o IP definido não estava correto, executei o comando `sudo virsh net-dhcp-leases default` novamente o obtive o IP 192.168.122.166. Então configurei o kw para utilizar o novo IP:
+{% highlight shell %}
+kw remote --add arm64 root@192.168.122.166 --set-default
+{% endhighlight %}
+
+#### **Passo 4:**
+
+Ao executar o comando `kw ssh --get '~/vm_mod_list'` me deparei com o seguinte erro:
+
+{% highlight shell %}
+bash: line 1: rsync: command not found
+rsync: connection unexpectedly closed (0 bytes received so far) [Receiver]
+rsync error: error in rsync protocol data stream (code 12) at io.c(232) [Receiver=3.2.7]
+An error occurred while uploading the file(s). rsync return code: 12
+{% endhighlight %}
+
+Após uma breve pesquisa entendi que isso estava ocrrendo pela falta da ferramenta `rsync` na VM, o que foi rapidamente resolvido através da instalação da mesma:
+{% highlight shell %}
+sudo apt update
+sudo apt install rsync
+{% endhighlight %}
+
+#### **Passo 6:**
+
+Ao executar `kw deploy --modules` me deparei com alguns erros além dos erros apontados pelas ferramentas `strip` e `make`:
+
+![log mostrando erro rodar kw deploy --modules]({{ site.baseurl }}/assets/images/t2_kw_deploy_error.png)
+
+Mas o deploy finalizou com sucesso.
+
+De inicio achei que o boot utilizando o novo kernel não tinha funcionado, pois fiz as alterações nos scripts `launch_vm_qemu` e `create_vm_virsh` e quando executei as funções não obtive nenhum log. O que me fez "criar" mais duas funções `launch_vm_qemu_original` e `create_vm_virsh_original` que utilizam o kernel obtido da imagem baixada no [Tutorial 1][tutorial-1] e essas rodaram com sucesso. O que me fez pensar que o novo kernel poderia estar com problema, então refiz o tutorial para garantir que não pulei nenhuma etapa e mesmo assim o problema continou. A solução para esse caso é subir a VM e aguardar alguns momentos, já que não sabemos o que está acontecendo pela falta de logs, então entrar nela via ssh para verificar que novo kernel estava lá:
+
+![evidência de filesystem compartilhado]({{ site.baseurl }}/assets/images/t2_vm_new_kernel.png)
+
+
+### **Considerações finais**
+Achei o tutorial bem explicativo, no geral nenhum dos problemas encontrados foi complicado de resolver.
+
+[tutorial-2]: https://flusp.ime.usp.br/kernel/qemu-libvirt-setup/
+[tutorial-1]: /jekyll/update/2026/03/05/tutorial-1.html
