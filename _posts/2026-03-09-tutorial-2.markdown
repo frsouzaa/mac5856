@@ -60,4 +60,4 @@ De inicio achei que o boot utilizando o novo kernel não tinha funcionado, pois 
 Achei o tutorial bem explicativo, no geral nenhum dos problemas encontrados foi complicado de resolver.
 
 [tutorial-2]: https://flusp.ime.usp.br/kernel/qemu-libvirt-setup/
-[tutorial-1]: /{{ site.baseurl }}/jekyll/update/2026/03/05/tutorial-1.html
+[tutorial-1]: {{ site.baseurl }}/jekyll/update/2026/03/05/tutorial-1.html
