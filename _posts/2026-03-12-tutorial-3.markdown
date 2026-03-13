@@ -1,0 +1,54 @@
+---
+layout: post
+title:  "Relato Tutorial 3"
+date:   2026-03-12 19:00:00 -0300
+categories: jekyll update
+---
+
+Link para o Tutorial 3: [https://flusp.ime.usp.br/kernel/modules-intro/][tutorial-3]
+
+No tutorial 3 aprendemos a criar módulos que podem ser "acoplados" no kernel linux.
+
+Seguindo o conceito do blog vou discorrer apenas sobre os pontos do tutorial em que tive algum tipo de problema.
+
+#### **Passo 2:**
+
+Esse não é bem um problema em si, mas o tutorial informa que os registros nos arquivos Kconfig e Makefile devem estar em ordem alfabética, porém os arquivos originais já estavam fora de ordem, então apenas inseri as novas configurações no inicio de cada um.
+
+#### **Passo 3:**
+
+Ao Executar `make -C "$IIO_TREE" menuconfig` reparei que a opção apresentada no tutorial `Simple Test Module` não estava disponível então selecionei a opção `Simple exemple Linux Kernel module (NEW)`:
+![Opção Simple exemple Linux Kernel module \(NEW\)]({{ site.baseurl }}/assets/images/t3_simple_exemple_module.png)
+Então segui o tutorial até o momento de instalar os novos módulos, mas quando executei o seguinte comando:
+{% highlight shell %}
+sudo guestmount --rw --add "${VM_DIR}/arm64_img.qcow2" --mount /dev/<rootfs> "${VM_DIR}/arm64_rootfs"
+{% endhighlight %}
+Fui agraciado com o seguinte erro:
+![erro no comando guestmount]({{ site.baseurl }}/assets/images/t3_erro_guestmount.png)
+Tentei exportar as variáveis de debug mas o erro continou o mesmo, ai notei que a minha VM estava rodando, então desliguei ela e tentei rodar novamente, funcionou!
+
+Seguindo os comandos bloco...Tive um problema no unmount `sudo guestunmount "$VM_MOUNT_POINT"`:
+![erro no comando guestunmount]({{ site.baseurl }}/assets/images/t3_erro_guestunmount.png)
+
+Já que a variável VM_MOUNT_POINT não existe, o comando correto é o:
+{% highlight shell %}
+sudo guestunmount "${VM_DIR}/arm64_rootfs" 
+{% endhighlight %}
+
+#### **Passo 4:**
+
+Todos os comandos rodaram sem problemas, vou deixar aqui um print do módulo funcionando:
+![log do modulo simple_mod]({{ site.baseurl }}/assets/images/t3_modulo.png)
+
+#### **Passo 5:**
+
+Ao executar o comando `make -C "$IIO_TREE" menuconfig` para configurar o simple_mod_part, selecionei a opção:
+![erro no comando guestunmount]({{ site.baseurl }}/assets/images/t3_menuconfig_simple_mod_part.png)
+Dai para frente não tive mais problemas para seguir o tutorial e consegui executar o simple_mod_part com sucesso dentro da VM.
+![log do modulo simple_mod_part]({{ site.baseurl }}/assets/images/t3_modpart.png)
+
+
+### **Considerações finais**
+Achei interessante a maneira que o kernel lida com novos módulos e como podemos ver eles sendo executados.
+
+[tutorial-3]: https://flusp.ime.usp.br/kernel/modules-intro/
