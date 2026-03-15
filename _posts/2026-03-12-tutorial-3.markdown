@@ -47,6 +47,29 @@ Ao executar o comando `make -C "$IIO_TREE" menuconfig` para configurar o simple_
 Dai para frente não tive mais problemas para seguir o tutorial e consegui executar o simple_mod_part com sucesso dentro da VM.
 ![log do modulo simple_mod_part]({{ site.baseurl }}/assets/images/t3_modpart.png)
 
+#### **Proposed Exercices**
+
+1. The .config file that comes with the arm64 VM is bloated with features built together with the kernel image (y config value) which is why even after `make localmodconfig` the .config file did not reduce significantly and the build took a lot of time. Run `make allmodconfig` to turn builtin configuration values into module values when possible. After that, boot the VM, regenerate the list of needed modules as described in Part 1, run `make localmodconfig` with new list of modules. Did it reduce .config size further? How much? Does the whole kernel build take less time with the new .config? Does the resulting kernel still boot?
+
+    .config size before the exercise: 179Kb \
+    .config size after `make allmodconfig`: 419K \
+    .config size after `make localmodconfig` with new list of modules: 204K \
+    If we compare the final size with the initial size it actualy got bigger, but if we compare with the size of .config with all the modules enabled it got ~51% smaller. \
+    Build time before the exercise: ~6:30 \
+    Final build time: ~8:40 \
+    Yes, the result kernel still boots, but I cant connect to it neither using `sudo virsh connect arm64` nor `kw ssh`.
+    ![cant connect to new vm]({{ site.baseurl }}/assets/images/t3_new_vm.png)
+
+2. Sometimes developers lose track of what .config was used to generate a running kernel after messing arround for enough time. The in kernel configuration config (IKCONFIG) exports (imports?) the .config file used to build the kernel into the kernel image and make it later availabe as /proc/config.gz file. Enable IKCONFIG, rebuild the kernel and read your .config from /proc/config.gz within the VM.
+
+    In my case IKCONFIG was already enabled, so i just needed to read the file inside the VM:
+    ![vm .config]({{ site.baseurl }}/assets/images/t3_vm_dotconfig.png)
+
+3. Customize the log messages for simple_mod and simple_mod_part. Add `#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt` at the top of the module source files. KBUILD_MODNAME will expand to the module source file name resulting in every message logged through `pr_info()` (and friends) being prepended by the module name. See include/linux/printk.h for documentation. Tip, add the above define before header inclusions to avoid build warnings.
+
+    No problems with these, here is the logs:
+    ![modules names]({{ site.baseurl }}/assets/images/t3_module_name.png)
+
 
 ### **Considerações finais**
 Achei interessante a maneira que o kernel lida com novos módulos e como podemos ver eles sendo executados.
