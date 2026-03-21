@@ -5,7 +5,7 @@ date:   2026-03-12 19:00:00 -0300
 categories: jekyll update
 ---
 
-Link para o Tutorial 3: [https://flusp.ime.usp.br/kernel/modules-intro/][tutorial-3]
+Link para o Tutorial 3: [Introduction to Linux kernel build configuration and modules][tutorial-3]
 
 No tutorial 3 aprendemos a criar módulos que podem ser "acoplados" no kernel linux.
 

@@ -1,0 +1,174 @@
+---
+layout: post
+title:  "Relato Tutorial 4"
+date:   2026-03-20 19:00:00 -0300
+categories: jekyll update
+---
+
+Link para o Tutorial 4: [Introduction to Linux kernel Character Device Drivers][tutorial-4]
+
+Depois desse tutorial entendemos um pouco mais a frase "Tudo no Linux é um arquivo", a final é nesse tutorial que aprendemos sobre os chamados `Linux character devices`, que são arquivos especiais utilizados para fazer a comunicação entre o espaço do usuário e o kernel. Também desenvolvemos o nosso primeiro `driver` para interagir com um desses "arquivos".
+
+Como nesse tutorial não tive nenhum problema para seguir os passos vou registar aqui tudo funcionando localmente.
+
+O driver desenvolvido, `simple_char`, não faz muito mais do que tranferir informações de texto entre o espaço do usuário e um buffer no espaço do sistema, através de um character device. Podemos testar isso com auxilio dos scripts fornecidos pelo tutorial `read_prog` e `write_prog`:
+
+![simple_char working]({{ site.baseurl }}/assets/images/t4_initial_driver_working.png)
+
+#### **Proposed Exercices**
+
+1. Printing device numbers: Modify the simple_char driver to make it print major and minor device numbers on device open.
+
+    After a little bit of research I found that the device numbers are stored in the inode structure, so I modified the `simple_char_open` function to print the major and minor numbers from inode pointer using the functions MAJOR and MINOR. Here is the modified code:
+
+    ```c
+    ...
+    static int simple_char_open(struct inode *inode, struct file *file)
+    {
+        int major_num = MAJOR(inode->i_rdev);
+        int minor_num = MINOR(inode->i_rdev);
+        pr_info("%s: MAJOR: %d MINOR: %d %s\n", KBUILD_MODNAME, major_num, minor_num, __func__);
+        return 0;
+    }
+    ...
+    ```
+
+    After recompiling and installing the module, I ran the test scripts again and got the following output in the kernel log:
+
+    ![major and minor numbers on dmesg log]({{ site.baseurl }}/assets/images/t4_major_minor_on_log.png)
+
+
+2. Device private data: Modify the simple_char driver to register more than one minor device number and make it keep separate buffers for each of them. Check the device minor number on device open and allocate a buffer for it if it doesn’t have one. Also, make the read/write operations run over the buffer for the particular major/minor device number pair. Access `f_inode` field of `struct file` to get a pointer to the device inode then access `i_rdev` field of `struct inode` to get the device ID (`dev_t`) from which you can extract the device minor number. On module unload, free all allocated buffers. With that, we can think of each pair of major/minor numbers as a different character device and each of them will have their own data. Finally, create device nodes with different minor numbers to test you implementation.
+
+    This one was a little bit more tricky, but i managed to implement it by creating a array of buffers, one for each minor number. After modifing all the functions except simple_char_release, the code looks like this:
+
+    ```c
+    #include <linux/init.h>
+    #include <linux/module.h>
+
+    #include <linux/kdev_t.h> /* for MAJOR */
+    #include <linux/cdev.h> /* for cdev */
+    #include <linux/fs.h> /* for chrdev functions */
+    #include <linux/slab.h> /* for malloc */
+    #include <linux/string.h> /* for strlen() */
+    #include <linux/uaccess.h> /* copy_to_user() */
+
+    struct cdev *s_cdev;
+    static dev_t dev_id;
+
+    #define S_BUFF_SIZE 4096
+
+    #define MINOR_NUMS 2
+
+    static char *s_bufs[MINOR_NUMS];
+
+    static int simple_char_open(struct inode *inode, struct file *file)
+    {
+        int major_num = MAJOR(inode->i_rdev);
+        int minor_num = MINOR(inode->i_rdev);
+        pr_info("%s: MAJOR: %d MINOR: %d %s\n", KBUILD_MODNAME, major_num, minor_num, __func__);
+        if (!s_bufs[minor_num]) {
+            s_bufs[minor_num] = kmalloc(S_BUFF_SIZE, GFP_KERNEL);
+            if (!s_bufs[minor_num])
+                return -ENOMEM;
+
+            snprintf(s_bufs[minor_num], S_BUFF_SIZE, "This is data from simple_char buffer. MAJOR: %d MINOR: %d", major_num, minor_num);
+            pr_info("%s: MAJOR: %d MINOR: %d %s Allocated new buffer for minor %d\n", KBUILD_MODNAME, major_num, minor_num, __func__, minor_num);
+        }
+        return 0;
+    }
+
+    static ssize_t simple_char_read(struct file *file, char __user *buffer,
+                    size_t count, loff_t *ppos)
+    {
+        int minor_num = MINOR(file->f_inode->i_rdev);
+        int n_bytes;
+        pr_info("%s: %s about to read %ld bytes from buffer position %lld\n",
+            KBUILD_MODNAME, __func__, count, *ppos);
+        n_bytes = count - copy_to_user(buffer, s_bufs[minor_num] + *ppos, count);
+        *ppos += n_bytes;
+        return n_bytes;
+    }
+
+    static ssize_t simple_char_write(struct file *file, const char __user *buffer,
+                    size_t count, loff_t *ppos)
+    {
+        int minor_num = MINOR(file->f_inode->i_rdev);
+        int n_bytes;
+        pr_info("%s: %s about to write %ld bytes to buffer position %lld\n",
+            KBUILD_MODNAME, __func__, count, *ppos);
+        n_bytes = count - copy_from_user(s_bufs[minor_num] + *ppos, buffer, count);
+        return n_bytes;
+    }
+
+    static int simple_char_release(struct inode *inode, struct file *file)
+    {
+        pr_info("%s: %s\n", KBUILD_MODNAME, __func__);
+        return 0;
+    }
+
+    static const struct file_operations simple_char_fops = {
+        .owner = THIS_MODULE,
+        .open = simple_char_open,
+        .release = simple_char_release,
+        .read = simple_char_read,
+        .write = simple_char_write,
+    };
+
+    static int __init simple_char_init(void)
+    {
+        int ret;
+
+        pr_info("Initialize %s module.\n", KBUILD_MODNAME);
+
+        /* Dynamically allocate character device device numbers. */
+        /* The name passed here will appear in /proc/devices. */
+        ret = alloc_chrdev_region(&dev_id, 0, MINOR_NUMS, "simple_char");
+        if (ret < 0)
+            return ret;
+
+        /* Allocate and initialize the character device cdev structure */
+        s_cdev = cdev_alloc();
+        s_cdev->ops = &simple_char_fops;
+        s_cdev->owner = simple_char_fops.owner;
+
+        /* Adds a mapping for the device ID into the system. */
+        return cdev_add(s_cdev, dev_id, MINOR_NUMS);
+    }
+
+    static void __exit simple_char_exit(void)
+    {
+        /*
+        * Undoes the device ID mapping and frees cdev struct, removing the
+        * character device from the system.
+        */
+        cdev_del(s_cdev);
+        /* Unregisters (disassociate) the device numbers allocated. */
+        unregister_chrdev_region(dev_id, MINOR_NUMS);
+
+        for (int i = 0; i < MINOR_NUMS; i++) {
+            if (s_bufs[i]) {
+                kfree(s_bufs[i]);
+                pr_info("%s: The buffer for minor %d is free\n", KBUILD_MODNAME, i);
+            }
+        }
+        pr_info("%s exiting.\n", KBUILD_MODNAME);
+    }
+
+    module_init(simple_char_init);
+    module_exit(simple_char_exit);
+
+    MODULE_AUTHOR("felipers@ime.usp.br");
+    MODULE_DESCRIPTION("A simple character device driver example.");
+    MODULE_LICENSE("GPL");
+    ```
+
+    Despite the new stuff, I also had to change `strcpy` to `snprintf` in simple_char_open function, beacuse I wanted to print major and minor numbers on the buffer and strcpy doesn't format the string:
+
+    ![strcpy error]({{ site.baseurl }}/assets/images/t4_erro_strcpy.png)
+
+    After recompiling and installing the module, I created two device nodes with different minor numbers to test the implementation:
+
+    ![driver running using multiple minors]({{ site.baseurl }}/assets/images/t4_multiple_minors.png)
+
+[tutorial-4]: https://flusp.ime.usp.br/kernel/char-drivers-intro/
