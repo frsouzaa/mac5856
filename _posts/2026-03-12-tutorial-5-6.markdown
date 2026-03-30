@@ -1,0 +1,95 @@
+---
+layout: post
+title: "Relato Tutoriais 5 e 6"
+date: 2026-03-29 19:00:00 -0300
+categories: jekyll update
+---
+
+Link para o Tutorial 5: [Sending patches by email with git][tutorial-5]
+
+Link para o Tutorial 6: [Sending patches with git and a USP email][tutorial-6]
+
+Nesses tutoriais vimos que o fluxo de desenvolvimento do kernel é centralizado no uso de e-mails para envio de patches, e em como podemos enviar esses patches de forma eficiente utilizando ferramentas como o `git` ou o `kw`. Aprendemos também a importância das mensagens de commits e como elas podem ser decisivas para a aceitação ou rejeição de um patch.
+
+Para esse tutorial, por conveniência, resolvi utilizar o kw para o envio dos patches. Como o kw encapsula o `git send-email` os comandos de configuração acabam sendo bem parecidos, e o processo foi relativamente simples:
+
+![kw email config]({{ site.baseurl }}/assets/images/t5_6_email_config.png)
+
+Por conta de limitações no e-mail USP não é possivel criar um [App Password][app-pass] para o envio de emails. Então o tutorial fernece uma maneira de contornar isso utilizando um e-mail proxy executado via docker + docker-compose para autenticação via OAuth 2.0.
+
+Após clonar o repositório do tutorial e configurar o arquivo `emailproxy.config` com as credenciais do e-mail USP, bastou executar o comando `docker compose up --build` para subir o container e, em outro terminal, o comando `docker exec -it emailproxy-coNntainer-server-1 /bin/bash` para entrar no container. Já dentro do container executei o comando `emailproxy --no-gui --external-auth --config-file /app/emailproxy.config` para iniciar o serviço de proxy de e-mail:
+
+![email proxy]({{ site.baseurl }}/assets/images/t5_6_proxy_running.png)
+
+Após isso rodei o comando `kw send-patch --send --private --to='felipe.souza1506@outlook.com'` e confirmei o conteúdo do patch pelo editor nano:
+
+![patch content]({{ site.baseurl }}/assets/images/t5_6_patch_content.png)
+
+E então... tive um problema com a autenticação do e-mail USP:
+
+![patch content]({{ site.baseurl }}/assets/images/t5_6_erro_autenticacao.png)
+
+Que foi resolvido rapidamente pelo monitor da diciplina, aparentemente era uma questão de cadastro relacionado ao meu e-mail USP. Então tentando novamente tive a confirmação de sucesso no log do servidor proxy:
+
+![log do servidor proxy]({{ site.baseurl }}/assets/images/t5_6_autenticado_proxy.png)
+
+E a confirmação do kw informando que o e-mail foi enviado:
+
+![patch content]({{ site.baseurl }}/assets/images/t5_6_email_enviado.png)
+
+Então fui verificar a caixa de entrada do e-mail e o patch estava lá!
+
+![patch content]({{ site.baseurl }}/assets/images/t5_6_email_recebido.png)
+
+#### **Extra!**
+
+Os comandos utilizados pelo tutorial para subir o servidor proxy necessitam de dois terminais abertos ao mesmo tempo, o que pode ser um pouco incoveniente para quem está realizando o tutorial. Por isso tomei a liberdade para editar um pouco as configurações do compose para que esse segundo terminal pudesse ser extinto.
+
+#### Isso é possivel de duas maneiras:
+
+#### 1º:
+
+Adicionando o comando a ser excutado diretamente no `docker-compose.yaml`
+
+```diff
+services:
+  server:
++   command: ["emailproxy", "--no-gui", "--external-auth", "--config-file", "/app/emailproxy.config"]
+    build: .
+    ports:
+      - "2587:2587"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./emailproxy.config:/app/emailproxy.config
+```
+
+E então subir o container utilizando o seguinte comando:
+
+```shell
+docker compose run --service-ports --build server 
+```
+
+#### 2º:
+
+Caso a edição do arquivo não seja desejada, é possível fazer a mesma coisa atráves do comando:
+
+```shell
+docker compose run --service-ports --build server emailproxy --no-gui --external-auth --config-file /app/emailproxy.config
+```
+
+#### Explicação:
+
+O comando original [docker compose up][docker-compose-up] sobe todos services configurados e agrega o output de cada container em um único terminal, ignorando os inputs.
+
+Já o comando [docker compose run][docker-compose-run] sobe apenas um único service, passado por parametro para o comando, e por isso é possível utilizar o stdin para interagir com o container. O parâmetro --service-ports serve para criar e mapear as portas declaradas.
+
+#### Fim
+
+Esses foram os valiosos aprendizados desta semana, até a próxima pessoal :)
+
+[tutorial-5]: https://flusp.ime.usp.br/git/sending-patches-by-email-with-git/
+[tutorial-6]: https://flusp.ime.usp.br/git/sending-patches-with-git-and-a-usp-email/
+[app-pass]: https://support.google.com/mail/answer/185833
+[docker-compose-up]: https://docs.docker.com/reference/cli/docker/compose/up/
+[docker-compose-run]: https://docs.docker.com/reference/cli/docker/compose/run/
