@@ -45,9 +45,9 @@ Então fui verificar a caixa de entrada do e-mail e o patch estava lá!
 
 Os comandos utilizados pelo tutorial para subir o servidor proxy necessitam de dois terminais abertos ao mesmo tempo, o que pode ser um pouco incoveniente para quem está realizando o tutorial. Por isso tomei a liberdade para editar um pouco as configurações do compose para que esse segundo terminal pudesse ser extinto.
 
-#### Isso é possivel de duas maneiras:
+#### **Isso é possivel de duas maneiras:**
 
-#### 1º:
+#### **1º:**
 
 Adicionando o comando a ser excutado diretamente no `docker-compose.yaml`
 
@@ -78,13 +78,13 @@ Caso a edição do arquivo não seja desejada, é possível fazer a mesma coisa 
 docker compose run --service-ports --build server emailproxy --no-gui --external-auth --config-file /app/emailproxy.config
 ```
 
-#### Explicação:
+#### **Explicação:**
 
 O comando original [docker compose up][docker-compose-up] sobe todos services configurados e agrega o output de cada container em um único terminal, ignorando os inputs.
 
 Já o comando [docker compose run][docker-compose-run] sobe apenas um único service, passado por parametro para o comando, e por isso é possível utilizar o stdin para interagir com o container. O parâmetro --service-ports serve para criar e mapear as portas declaradas.
 
-#### Fim
+#### **Fim**
 
 Esses foram os valiosos aprendizados desta semana, até a próxima pessoal :)
 

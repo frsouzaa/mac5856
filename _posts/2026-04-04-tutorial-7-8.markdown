@@ -1,0 +1,64 @@
+---
+layout: post
+title: "Relato Tutoriais 7 e 8"
+date: 2026-04-04 19:00:00 -0300
+categories: jekyll update
+---
+
+Link para o Tutorial 7: [The iio_simple_dummy Anatomy][tutorial-7]
+
+Link para o Tutorial 8: [IIO Dummy module Experiment One: Play with iio_dummy][tutorial-8]
+
+A realização dos tutoriais 7 e 8 foi um bom modo de encerrar essa etapa do curso, a final, pude colocar em prática vários dos conceitos aprendidos desde o primeiro tutorial.
+
+Depois de habilitar o módulo `iio_dummy` via `make menuconfig`, realizar o build e boot da vm não consegui fazer o comando `sudo make modules_install` funcionar de jeito nenhum dentro da vm, por isso voltei para o [Tutorial 3][tutorial-3] para rever alguns conceitos e comando úteis sobre módulos, e finalmente consegui carregar o módulo dessa maneira:
+```shell
+@HOST
+kw ssh --send drivers/iio/dummy/iio_dummy.ko
+kw ssh --send drivers/iio/dummy/iio_dummy_evgen.ko
+
+@VM
+cp ~/iio_dummy.ko /lib/modules/`uname -r`/kernel/drivers/iio/dummy
+cp ~/iio_dummy_evgen.ko /lib/modules/`uname -r`/kernel/drivers/iio/dummy
+```
+
+Depois disso a utilização do módulo começou tranquila:
+
+![modinfo result for iio_dumy module]({{ site.baseurl }}/assets/images/t7_8_modinfo_iio_dummy.png)
+
+Até o momento de montar o configfs filesystem:
+
+![mount warning]({{ site.baseurl }}/assets/images/t7_8_mount_warning.png)
+
+Como o tutorial não comentou nada sobre esse warning e após uma breve pesquisa não pareceu ser nada que fosse quebrar os próximos passos apenas ignorei e segui em frente.
+
+Seguindo para o problema que demorei mais tempo para resolver... Após executar o mount tentei verificar se estava tudo certo através do comando `ls /mnt/iio_experiments/iio/devices/`, como o tutorial indica, e foi ai que as coisas desandaram. O comando apenas retornava o erro `No such file or directory`, logo achei que havia algo de errado com o meu módulo. De primeiro momento sai da vm, compilei e carreguei tudo novamente e... o mesmo erro.
+
+Meu segundo pensamento foi achar que o problema estava na vm, a final, já havia feito varios testes nela e algo poderia ter quebrado no meio do caminho, como não tinha certeza do que poderia ser esse algo resolvi "formatar" a vm. Para isso apaguei o disco `${VM_DIR}/arm64_img.qcow2` e retornei ao passo 2.2 do [Tutorial 1][tutorial-1] para criá-lo novamente - dessa vez aproveitei para salvar um backup do disco "limpo" - e mesmo após tudo isso continuei tomando o erro `No such file or directory`.
+
+Dai fui tomar um café e deixei o problema de lado por um tempinho. Foi quando e me veio na cabeça "Será que o módulo tem que estar carregado?", fui testar e... *Voilà*, funcionou!
+
+![module runing]({{ site.baseurl }}/assets/images/t7_8_module_running.png)
+
+Dai para frente implementai as mudanças sugeridas no tutorial e tudo correu bem:
+
+Descrição do módulo modificado:
+
+![Descrição do módulo modificado]({{ site.baseurl }}/assets/images/t7_8_dummy_modified.png)
+
+Conteúdo do diretório `/sys/bus/iio/devices/iio:device0`:
+
+![/sys/bus/iio/devices/iio:device0/]({{ site.baseurl }}/assets/images/t7_8_iio:device.png)
+
+Leitura dos canais:
+
+![canais]({{ site.baseurl }}/assets/images/t7_8_chanels.png)
+
+#### **Considerações finais**
+
+Apesar de os tutoriais 7 e 8 serem bem explicativos algumas informações podem ser atualizadas, como por exeplo os snipets da função iio_dummy_read_raw no tutorial 7. Também acharia interessante integrar o kw em alguns passos do tutorial 8, além de adicionar o diff das mudanças feitas no módulo, para que fique mais claro o que deve ser feito.
+
+[tutorial-7]: https://flusp.ime.usp.br/iio/iio-dummy-anatomy/
+[tutorial-8]: https://flusp.ime.usp.br/iio/experiment-one-iio-dummy/
+[tutorial-1]: {{ site.baseurl }}/jekyll/update/2026/03/05/tutorial-1.html
+[tutorial-3]: {{ site.baseurl }}/jekyll/update/2026/03/12/tutorial-3.html
