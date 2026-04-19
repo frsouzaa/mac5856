@@ -34,6 +34,19 @@ Mas tudo isso pode ser resolvido utilizando uma macro criada em 2023, o que é r
 }                        // from here on, the mutex is unlocked
 ```
 
+Também existe a possibilidade de usarmos uma macro similar chamada scoped_guard(mutex, &lock):
+
+```c
+{
+    ...                          // do some stuff with no mutex active
+    scoped_guard(mutex, &lock) { // lock is a struct mutex that has been initialised
+    ...                          // inside these curly braces, the mutex is active
+    }                            // from here on, the mutex is unlocked
+    ...                          // do some other stuff with no mutex active
+}
+```
+###### Código obtido em: [Suggestion 1.1) Replace mutex_lock(&lock) and mutex_unlock(&lock) calls with guard(mutex)(&lock)][chapter1]
+
 Dado essa breve explicação, vamos ao patch...
 
 #### **Configuração local:**
@@ -284,13 +297,31 @@ Para o commit do patch foi adicionado apenas o arquivo `drivers/iio/adc/ingenic-
 
 ![mensagem do commit]({{ site.baseurl }}/assets/images/patch_commit_message.png)
 
-Conforme orientado pelo [Guideline][guidelines], enviei o patch inicialmente para o CI interno do IME-USP no dia 11/04/2026 e recebi retorno no dia 13/04/2026: 
+Conforme orientado pelo [Guideline][guidelines], enviei o patch inicialmente para o CI interno do IME-USP no dia 11/04/2026 e recebi retorno no dia 13/04/2026:
 
 ![ci com sucesso]({{ site.baseurl }}/assets/images/patch_ci.png)
 
-Agora com o código validado pelo CI chegou a vez de enviar o patch para o "mundo", o que foi simples devido ao uso da ferramenta kw:
+Agora com o código validado pelo CI chegou a vez de enviar o patch para o "mundo", o que foi facilitado com o uso da ferramenta kw:
+
+```shell
+kw send-patch --send -1
+```
 
 ![patch enviado]({{ site.baseurl }}/assets/images/patch_email_sent.png)
+
+#### **v2:**
+
+Ao longo dos dias 16/04/2026 e 17/04/2026 recebi alguns retornos com orientações e sujestões de melhoria para o código, sendo:
+
+1. Se referir as funções como func() na mensagem de commit
+2. Manter a ordem dos #includes
+3. Elaborar melhor a alteração na função ingenic_adc_read_chan_info_raw()
+
+A primeira parte foi fácil, ajustei a mensagem do commit e ordenei os #includes. Sobre a função ingenic_adc_read_chan_info_raw() resolvi substituir a macro guard() pela scoped_guard() para manter o comportamento original da função.
+
+Novamente compilei o código, testei na vm e submeti ao CI, que resultou em sucesso. Com tudo isso feito, enviei a v2 do meu patch:
+
+![patch v2 enviado]({{ site.baseurl }}/assets/images/patch_v2.png)
 
 [suggestions]: https://flusp.ime.usp.br/courses/linux-kernel-patch-suggestions/
 [guidelines]: https://flusp.ime.usp.br/courses/linux-kernel-patch-submission-guidelines/
