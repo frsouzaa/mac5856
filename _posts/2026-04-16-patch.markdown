@@ -311,7 +311,7 @@ kw send-patch --send -1
 
 #### **v2:**
 
-Ao longo dos dias 16/04/2026 e 17/04/2026 recebi alguns retornos com orientações e sujestões de melhoria para o código, sendo:
+Ao longo dos dias 16/04/2026 e 17/04/2026 recebi alguns retornos de Rong Zhang <rongrong@oss.cipunited.com> e Andy Shevchenko <andriy.shevchenko@intel.com> com orientações e sujestões de melhoria para o código, sendo:
 
 1. Se referir as funções como func() na mensagem de commit
 2. Manter a ordem dos #includes
@@ -322,6 +322,95 @@ A primeira parte foi fácil, ajustei a mensagem do commit e ordenei os #includes
 Novamente compilei o código, testei na vm e submeti ao CI, que resultou em sucesso. Com tudo isso feito, enviei a v2 do meu patch:
 
 ![patch v2 enviado]({{ site.baseurl }}/assets/images/patch_v2.png)
+
+#### **v3:**
+
+No dia 19/04/2026 recebi retorno do Jonathan Cameron <jic23@kernel.org>, mantenedor principal do subsistema iio, informando que não era muito bom combinar o uso da macro guard()() com a diretiva goto, pois isso pode resultar um bugs por conta de comportamentos diferentes entre compiladores.
+
+Além de outro retorno do Andy sugerindo a substituição do scoped guard iserido na v2 do patch por uma nova função helper para a função ingenic_adc_read_chan_info_raw(), o que deveria ser feito em outro commit.
+
+Então separei o meu patch em dois commits, o primeiro criando o helper e o segundo com as alterações do mutex:
+
+![dois commits]({{ site.baseurl }}/assets/images/patch_2_commits.png)
+
+Agora temos a nova função ingenic_adc_read_chan_locked() e o novo código para a função ingenic_adc_read_chan_info_raw():
+
+<details>
+  <summary><b>ingenic_adc_read_chan_locked() e ingenic_adc_read_chan_info_raw()</b></summary>
+{% highlight c %}
+static int ingenic_adc_read_chan_locked(struct ingenic_adc *adc,
+					struct iio_chan_spec const *chan,
+					int *val)
+{
+	int cmd, ret, engine = (chan->channel == INGENIC_ADC_BATTERY);
+
+	/* We cannot sample the aux channels in parallel. */
+	guard(mutex)(&adc->aux_lock);
+
+	if (adc->soc_data->has_aux_md && engine == 0) {
+		switch (chan->channel) {
+		case INGENIC_ADC_AUX0:
+			cmd = 0;
+			break;
+		case INGENIC_ADC_AUX:
+			cmd = 1;
+			break;
+		case INGENIC_ADC_AUX2:
+			cmd = 2;
+			break;
+		}
+
+		ingenic_adc_set_config(adc, JZ_ADC_REG_CFG_AUX_MD, cmd);
+	}
+
+	ret = ingenic_adc_capture(adc, engine);
+	if (ret)
+		return ret;
+
+	switch (chan->channel) {
+	case INGENIC_ADC_AUX0:
+	case INGENIC_ADC_AUX:
+	case INGENIC_ADC_AUX2:
+		*val = readw(adc->base + JZ_ADC_REG_ADSDAT);
+		break;
+	case INGENIC_ADC_BATTERY:
+		*val = readw(adc->base + JZ_ADC_REG_ADBDAT);
+		break;
+	}
+
+	return IIO_VAL_INT;
+}
+
+static int ingenic_adc_read_chan_info_raw(struct iio_dev *iio_dev,
+					  struct iio_chan_spec const *chan,
+					  int *val)
+{
+	int ret;
+	struct ingenic_adc *adc = iio_priv(iio_dev);
+
+	ret = clk_enable(adc->clk);
+
+	if (ret) {
+		dev_err(iio_dev->dev.parent, "Failed to enable clock: %d\n",
+			ret);
+		return ret;
+	}
+
+	ret = ingenic_adc_read_chan_locked(adc, chan, val);
+
+	clk_disable(adc->clk);
+
+	return ret;
+}
+{% endhighlight %}
+</details>
+
+<br/>
+
+Novamente compilei o código, testei na vm e submeti ao CI, que resultou em sucesso. Com tudo isso feito, enviei a v3 do meu patch:
+
+![patch v3]({{ site.baseurl }}/assets/images/patch_v3.png)
+
 
 [suggestions]: https://flusp.ime.usp.br/courses/linux-kernel-patch-suggestions/
 [guidelines]: https://flusp.ime.usp.br/courses/linux-kernel-patch-submission-guidelines/
