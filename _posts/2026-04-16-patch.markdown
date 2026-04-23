@@ -411,6 +411,19 @@ Novamente compilei o código, testei na vm e submeti ao CI, que resultou em suce
 
 ![patch v3]({{ site.baseurl }}/assets/images/patch_v3.png)
 
+#### **v4:**
+
+No dia 22/04/2026 recebi um retorno do Andy sobre a v3 do meu patch, dessa vez os únicos apontamentos foram relacionados com code style:
+
+Primeiro commit:
+![first andy message]({{ site.baseurl }}/assets/images/patch_andy_1.png)
+
+Segundo commit:
+![first andy message]({{ site.baseurl }}/assets/images/patch_andy_2.png)
+
+Novamente compilei o código, testei na vm e submeti ao CI, que resultou em sucesso. Com tudo isso feito, enviei a v4 do meu patch:
+
+![first andy message]({{ site.baseurl }}/assets/images/patch_v4.png)
 
 [suggestions]: https://flusp.ime.usp.br/courses/linux-kernel-patch-suggestions/
 [guidelines]: https://flusp.ime.usp.br/courses/linux-kernel-patch-submission-guidelines/
