@@ -423,7 +423,60 @@ Segundo commit:
 
 Novamente compilei o código, testei na vm e submeti ao CI, que resultou em sucesso. Com tudo isso feito, enviei a v4 do meu patch:
 
-![first andy message]({{ site.baseurl }}/assets/images/patch_v4.png)
+![patch v4]({{ site.baseurl }}/assets/images/patch_v4.png)
+
+#### **v5:**
+
+No dia 24/04/2026 recebi um retorno do Jonathan sugerindo um ajuste na nomeclatura de funções, ele apontou que `_locked()` normalmente implica que um lock já está sendo mantido, mas no contexto do driver, o sufixo `_unlocked()` também indica isso. Pare resolver esse conflito, ele sugere migrar para uma convenção mais comum, onde `__xxx()` indica a variante de `xxx()` que deve ser chamada com um lock já adquirido.
+
+Para esse ajuste criei um terceiro commit, antecessor dos outros dois.
+
+Já no segundo commit, aproveitei para refatorar a função ingenic_adc_read_chan_locked() para seguir a mesma lógica, transformando-a em __ingenic_adc_read_chan(). Forçando que o lock volte para a função ingenic_adc_read_chan_info_raw(), o que preserva o comportamente original do driver.
+
+A unica alteração no terceiro commit foi a troca do guard()() para o scoped_guard() na função ingenic_adc_read_chan_info_raw().
+
+- Mensagens de commit até então:
+    - Primeiro commit:
+    
+    ```
+    iio: adc: ingenic-adc: rename ingenic_adc_enable_unlocked() function
+    
+    Rename ingenic_adc_enable_unlocked() to __ingenic_adc_enable() to
+    better reflect that this helper must be called with the lock held.
+    ```
+
+
+    - Segundo commit:
+    
+    ```
+    iio: adc: ingenic-adc: refactor ingenic_adc_read_chan_info_raw()
+    
+    Extract the sample logic from ingenic_adc_read_chan_info_raw() into
+    a new helper function __ingenic_adc_read_chan() to improve code
+    readability and modularity.
+    
+    The helper handles the mutex-protected section for sampling channels,
+    while the main function manages mutex and clock enabling/disabling.
+    ```
+
+    - Terceiro commit:
+    
+    ```
+    iio: adc: ingenic-adc: use guard()() and scoped_guard() to handle synchronisation
+    
+    Replace mutex_lock() and mutex_unlock() calls with guard()() in
+    functions ingenic_adc_set_adcmd(), ingenic_adc_set_config(),
+    ingenic_adc_enable(), ingenic_adc_capture(), and with scoped_guard()
+    in function ingenic_adc_read_chan_info_raw().
+    
+    This removes the need to call the unlock function, as the lock is
+    automatically released when the function return or the scope exits
+    for any other case.
+    ```
+
+Novamente compilei o código, testei na vm e submeti ao CI, que resultou em sucesso. Após tudo isso feito, enviei a v5 do meu patch:
+
+![patch v5]({{ site.baseurl }}/assets/images/patch_v5.png)
 
 [suggestions]: https://flusp.ime.usp.br/courses/linux-kernel-patch-suggestions/
 [guidelines]: https://flusp.ime.usp.br/courses/linux-kernel-patch-submission-guidelines/
