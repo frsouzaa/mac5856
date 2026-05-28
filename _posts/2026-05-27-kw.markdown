@@ -1,0 +1,31 @@
+---
+layout: post
+title: "Relato Contribuição no KW - feature apply-patch"
+date: 2026-05-27 19:00:00 -0300
+categories: jekyll update
+---
+
+#### **Introdução:**
+
+Eu e meu colega de equipe, [Lucas Ciziks][lucas], escolhemos contribuir com o [kworkflow (kw)][kw] depois de uma sugestão e de conversas com o professor Paulo e o monitor David.
+
+O kw é uma ferramenta de linha de comando escrita em Bash que simplifica o fluxo de desenvolvimento do kernel Linux — desde compilar e fazer deploy em VMs até enviar patches por e-mail. O projeto é mantido principalmente pelo Rodrigo Siqueira juntamente com colaboradores da comunidade brasileira do kernel, o que facilita a comunicação e o apoio durante a contribuição.
+
+Como propostas iniciais de contribuição o Lucas identificou que poderiamos atualizar os textos de ajuda (`-h`) de alguns comandos, que estavam defasados em relação à documentação do projeto. Também notei que a action actions/checkout@v4 utilizada pelos workflows do projetos estava com a versão desatualizada.
+
+Depois de avaliar as issues do projeto e consultar o David, optamos por atacar os seguintes pontos:
+
+1. [#1257][i1257] - Bug no git send-email quando a flag -v é usada ao final do comando
+2. [#1177][i1177] - Suporte a git am a partir de URL
+3. [#1163][i1163] - Rodar checkpatch automaticamente antes do envio de patches
+4. Atualizar versão da action actions/checkout no CI do kw
+5. Atualizar texto de ajuda -h do send-patch, defasado em relação à doc oficial
+
+Destes eu fiquei responsável pelos tópicos `2` e `4`. O Desenvolvimento dos outros tópicos pode ser acompanhado pelo [Blog do Lucas][lucas-kw].
+
+[lucas]: https://ciziks.github.io/mac0470/index.html
+[lucas-kw]: https://ciziks.github.io/mac0470/reports/relato-08.html
+[kw]: https://github.com/kworkflow/kworkflow
+[i1177]: https://github.com/kworkflow/kworkflow/issues/1177
+[i1163]: https://github.com/kworkflow/kworkflow/issues/1163
+[i1257]: https://github.com/kworkflow/kworkflow/issues/1257
