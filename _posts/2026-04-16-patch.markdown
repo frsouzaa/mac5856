@@ -478,6 +478,18 @@ Novamente compilei o código, testei na vm e submeti ao CI, que resultou em suce
 
 ![patch v5]({{ site.baseurl }}/assets/images/patch_v5.png)
 
+#### **Final:**
+
+No dia 06/05/2026 recebi um retorno do Jonathan informando que o meu patch foi aceito!
+
+![parch aceito via email]({{ site.baseurl }}/assets/images/patch_email_applied.png)
+
+Aqui está o registro dos meus commits no histórico da [branch testing do repo do iio][iio-testing].
+
+![registo do git log dos meus commits]({{ site.baseurl }}/assets/images/patch_git_log.png)
+
+Com isso, esse ciclo está quase finalizado, agora só restar esperar até que os commits sejam implementados na próxima `release candidate` da tree.
+
 [suggestions]: https://flusp.ime.usp.br/courses/linux-kernel-patch-suggestions/
 [guidelines]: https://flusp.ime.usp.br/courses/linux-kernel-patch-submission-guidelines/
 [lucas]: https://ciziks.github.io/mac0470/index.html
@@ -487,3 +499,4 @@ Novamente compilei o código, testei na vm e submeti ao CI, que resultou em suce
 [tutorial-2]: https://flusp.ime.usp.br/kernel/build-linux-for-arm-kw/
 [tutorial-3]: https://flusp.ime.usp.br/kernel/modules-intro/
 [tutorial-4]: https://flusp.ime.usp.br/kernel/char-drivers-intro/
+[iio-testing]: https://git.kernel.org/pub/scm/linux/kernel/git/jic23/iio.git/log/?h=testing
