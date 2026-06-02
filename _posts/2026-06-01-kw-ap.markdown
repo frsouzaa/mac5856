@@ -1,0 +1,116 @@
+---
+layout: post
+title: "Relato Contribuição no KW - Feature apply-patch"
+date: 2026-06-01 19:00:00 -0300
+categories: jekyll update
+---
+
+#### **[#1177][i1177] - Suporte a git am a partir de URL**
+
+Primeiramente, antes de iniciar o desenvolvimento da nova feature, analisei a estrutura do projeto e os padrões de desenvolvimento, confesso que tive um pequena ajuda do GitHub Copilot para esse passo. Com essas informações em mãos não tive muitos problemas com o desenvolvimento.
+
+Como essa implementação se trata de uma nova feature para o kw comecei definindo o nome da feature, na issue [#1177][i1177] aberta pela Melissa Wen foi sugerida a API `kw patch-from-url <URL>`, mas achei um pouco grande demais e resolvi seguir com apply-patch ou apenas ap, assim, temos um ponto de partida:
+```shell
+kw apply-patch <URL>
+Ou apenas:
+kw ap <URL>
+```
+
+Como o kw é executado a partir de um conjunto de scripts shell achei uma boa criar um alias para acessar o meu ambiente de desenvolvimento: `alias kwd="~/github/kworkflow/kw"`. Assim não preciso ficar digitando todo o caminho dos scripts para realizar testes.
+
+Tendo tudo isso definido, o primeiro passo foi ajustar as listas de comando nos arquivos `./src/_kw` e `./src/help.sh`, e a chamada do função main da feature nova no arquivo `./kw`. Porém, notei que o texto mostrado no `kw h` não apresentava nenhuma ordenação, e como já iria mexer naquela parte do código resolvi fazer um commit inicial ajustando apenas esse ponto:
+
+![primeiro commit kw]({{ site.baseurl }}/assets/images/kw_commit_1.png)
+
+Com isso feito segui para a implementação da funcionalidade. Criei o arquivo `./src/apply_patch.sh`, dentro dele a primeira coisa que fiz foi a função `apply_patch_main()` que é a função principal da funcionalidade, dentro dela está toda a regra de negócio conforme digrama apresentado abaixo:
+
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+</script>
+
+<style>
+    .mermaid {
+        display: flex;
+        justify-content: center;
+        align-items: center; 
+    }
+</style>
+
+<pre class="mermaid">
+    graph TB
+        A(Início) --> B{Informações estão válidas?}
+        B --> |Sim| D[Baixa conteúdo da URL]
+        B --> |Não| C(Fim - Falha)
+        D --> J{Download feito com sucesso?}
+        J --> |Sim| E[Aplica Patch - 'git am']
+        J --> |Não| K(Fim - Falha)
+        E --> F{Patch aplicado com sucesso?}
+        F --> |Sim| H(Fim - Sucesso)
+        F --> |Não| G[Realiza Rollback da mudança]
+        G --> I(Fim - Falha)
+</pre>
+
+No step `Informações estão válidas?` são validados os seguintes pontos:
+
+- Execução em uma kernel root;
+- Integridade do repositório git; e
+- Integridade da URL.
+
+A implementação do step `Baixa conteúdo da URL` foi um pouco desafiadora pois não conseguia fazer o curl funcionar com o endereço do lore.kernel.org, por algum motivo estava tomando erro `403 Forbidden`.
+
+Depois de algum tempo de pesquisa descobri que o que estava bloqueando minhas requisições era o Anubis, um firewall do lore. Para passar por ele basta utilizar a opção `--user-agent "kw"` no curl, deixando a minha requisição assim:
+
+```shell
+curl --silent --write-out "\n%{http_code}" --user-agent "kw" --max-time 30 $url
+```
+
+Também tive problemas no step `Aplica Patch - 'git am'`. Como estou utilizando o helper `cmd_manager` do kw para acionar comandos, quando tentava passar a string `"git am --quiet 2>&1 <<< "$patch_content"` como parâmetro, o evaluate da variável $patch_content era feito antes do resto do comando. Assim, no momento em que o helper tenta realizar o eval do comando todo o conteúdo do patch também era interpretado, o que sempre quebrava a funcionalidade. Ou seja, o evaluate estava sendo feito no momento errado, para corrigir isso alterei o input do helper para `"git am --quiet 2>&1 <<< \"\$patch_content\""`, fazendo com que o shell interpretasse o conteúdo do patch a partir da variável $patch_content.
+
+Com o desenvolvimento concluido comecei a escrever os testes unitários. O que é sempre um desafio, pois o código precisa estar bem organizado para que os testes sejam escritos de maneira eficiente, o que não era o meu caso. Isso me levou a fazer uma pequena rodada de refatoração e reestruturação do código. 
+
+Depois do código organizado só fiquei em dúvida em como utilizar mock's para os comandos `curl` e `git am`. Tive uma conversa com o David e ele sugeriu que eu criasse funções temporarias em tempo de teste que retornem o que eu espero receber desses comandos, exemplos:
+
+```shell
+  curl()
+  {
+    # this is a mock function to simulate curl behavior for testing
+    printf "content\n\n200"
+    return 0
+  }
+  git()
+  {
+    # this is a mock function to simulate git behavior for testing
+    arg1="$1"
+    arg2="$2"
+    if [[ "$arg1 $arg2" == "am --quiet" ]]; then
+      return 1
+    fi
+    return 0
+  }
+```
+
+Com isso finalizamos a funcionalidade, agora vamos para alguma evidências do funcionamento:
+
+##### Patch aplicado:
+
+![Patch aplicado]({{ site.baseurl }}/assets/images/kw_ap.png)
+
+##### Erro ao aplicar patch, rollback realizado:
+
+![Erro ao aplicar patch, rollback realizado]({{ site.baseurl }}/assets/images/kw_ap_fail.png)
+
+##### Testes unitários:
+
+![Testes unitários]({{ site.baseurl }}/assets/images/kw_ap_tests.png)
+
+##### Mensagem de commit:
+
+![commit principal]({{ site.baseurl }}/assets/images/kw_commit_2.png)
+
+<br/>
+
+Alterações feitas e [PR Aberto][PR], agora basta aguardar um feedback dos mantenedores.
+
+[i1177]: https://github.com/kworkflow/kworkflow/issues/1177
+[PR]: https://github.com/kworkflow/kworkflow/pull/1267
