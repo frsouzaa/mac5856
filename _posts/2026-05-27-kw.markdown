@@ -23,9 +23,15 @@ Depois de avaliar as issues do projeto e consultar o David, optamos por atacar o
 
 Destes eu fiquei responsável pelos tópicos `2` e `4`. O Desenvolvimento dos outros tópicos pode ser acompanhado pelo [Blog do Lucas][lucas-kw].
 
+[Desenvolvimento do tópico 2.][topico-2]
+
+[Desenvolvimento do tópico 4.][topico-4]
+
 [lucas]: https://ciziks.github.io/mac0470/index.html
 [lucas-kw]: https://ciziks.github.io/mac0470/reports/relato-08.html
 [kw]: https://github.com/kworkflow/kworkflow
 [i1177]: https://github.com/kworkflow/kworkflow/issues/1177
 [i1163]: https://github.com/kworkflow/kworkflow/issues/1163
 [i1257]: https://github.com/kworkflow/kworkflow/issues/1257
+[topico-2]: {{ site.baseurl }}/jekyll/update/2026/06/01/kw-ap.html
+[topico-4]: {{ site.baseurl }}/jekyll/update/2026/06/03/kw-ci.html

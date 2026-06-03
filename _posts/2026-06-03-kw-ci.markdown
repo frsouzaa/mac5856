@@ -1,0 +1,41 @@
+---
+layout: post
+title: "Relato Contribuição no KW - Unificar a Pipeline de CI"
+date: 2026-06-03 14:00:00 -0300
+categories: jekyll update
+---
+
+#### **Unificar a Pipeline de CI**
+
+Inicialmente o plano para essa contribuição era apenas atualizar a versão da action `actions/checkout@v4` para `actions/checkout@v6`. Mas durante o desenvolvimento da primeira contribuição reparei que a pipeline de CI estava separada em 5 arquivos diferentes, o que acaba deixando o fluxo um pouco confuso e difícil de monitorar.
+
+A cada `push` ou abertura de `pull request` eram acionados 5 workflows diferentes:
+
+![fluxo de ci antigo]({{ site.baseurl }}/assets/images/kw_ci_old.png)
+
+Gerando assim a necessidade de acessar um por um para ter detalhes de log.
+
+Na nova versão, é acionado apenas um único workflow:
+
+![fluxo de ci novo]({{ site.baseurl }}/assets/images/kw_ci_new.png)
+
+E dentro desse workflow estão condensados todos os jobs:
+
+![detalhes do fluxo de ci novo]({{ site.baseurl }}/assets/images/kw_ci_new_details.png)
+
+Deixando assim mais fácil de visualizar os logs e identificar todos os erros.
+
+Além da alteração na estrutura do workflow também ajustei os seguintes pontos:
+
+- Atualizar a versão da action `actions/checkout@v4` para `actions/checkout@v6`;
+- Atualizar a versão da action `luizm/action-sh-checker@v0.3.0` para `luizm/action-sh-checker@v0.10.0`;
+- Trocar o input `fail_on_error: true` da action `reviewdog/action-shellcheck@v1` para `fail_level: any`; e
+- Adicionar trigger `workflow_dispatch` para acionamento manual.
+
+Mensagem de commit:
+
+![mensagem de commit]({{ site.baseurl }}/assets/images/kw_ci_commit.png)
+
+Alterações feitas e [PR Aberto][PR], agora basta aguardar um feedback dos mantenedores.
+
+[PR]: https://github.com/kworkflow/kworkflow/pull/1270
