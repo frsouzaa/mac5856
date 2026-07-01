@@ -1,0 +1,148 @@
+---
+layout: post
+title: "Análise do Dataset LKML5Ws"
+date: 2026-06-30 19:00:00 -0300
+categories: jekyll update
+---
+
+#### **Análise do Dataset LKML5Ws**
+
+A proposta para essa fase da disciplina foi analisar como o código proposto nos patches impactou no resultado de análises estáticas de arquivos de código fonte.
+
+Como o dataset está divido em 345 listas de e-mails diferentes seria inviável analisar tudo, por isso decidimos focar na lista do `IIO`, subsistema que foi abordado durante as fases anteriores da disciplina.
+
+Assim como as listas, o kernel também possui um repositório principal `torvalds/linux` e vários subsistemas, para nossa análise foi utilizado o subsistema `jic23/iio`, a final ele é o repositório central da lista de e-mails do `IIO`.
+
+Para realizar a análise preciamos das seguintes informações:
+1. git diff do patch
+2. Relação dos arquivos alterados no patch
+3. Conteúdo original de cada arquivo
+4. Análise estática de antes e depois da aplicação do patch
+
+O item `1.` pode ser obtido facilmente com base na coluna `code` do dataset, então o primeiro passo foi filtrar os dados onde essa coluna era não vazia, reduzindo o tamanho do dataset de `119.896` e-mails para `41.861`. 
+
+Utilizando a biblioteca `unidiff` do python podemos coletar os dados necessários para o cumprimento do item `2.`, essa biblioteca é capaz de desmembrar o diff do patch arquivo por arquivo e serializar os dados em uma estrutura manupilável. Com base nessas informações chegamos a `73.491` arquivos diferentes, ou melhor, blobs difentes. A final o mesmo arquivo pode ter diferentes conteúdos em diferentes patches ao longo do tempo. Destes, `52.048` eram blobs de arquivos `.c` ou `.h`, os outros 21.443 arquivos estavam distribuídos entre .yml, makefiles, etc..
+
+Com esses dados em mãos olhamos para a propriedade `index`, com ela é possivel recuperar o hash do blob git que foi utilizado como base para aquela alteração. Considerando que esse blob exista na git tree local é possivel executar o comando `git show <hash>` para obter o estado original do arquivo, ressaltando a importância de escolher uma tree que esteja alinhada com a lista de e-mails. Com isso obtemos o conteúdo original do arquivo para satisfazer o item `3.`. Após esse passo foi possível coletar o conteúdo de `40.760` blobs.
+
+Para o item `4.` basta executar a análise do cppcheck sobre cada um desses 40.760 blobs, aplicar as mudanças do patch de cada blob com auxílio do `git apply` e executar todas as análises novamente.
+
+<details>
+  <summary>Código utilizado para coleta dos dados</summary>
+{% highlight python %}
+import pandas as pd
+from unidiff import PatchSet, UnidiffParseError
+from git import Repo, GitCommandError
+import os
+import subprocess
+import time
+
+
+start_time = time.time()
+
+
+def clean_git_repo(repo):
+    repo.git.restore(".")
+    repo.git.clean("-xdf")
+
+
+kernel_base_path = "/home/lk_dev/iio_full"
+patch_path = f"{os.getcwd()}/temp.patch"
+repo = Repo(kernel_base_path)
+parquet="iio/list_data.parquet"
+
+df = pd.read_parquet(parquet)
+df = df[df["code"].notna()]
+df = df.reset_index()
+
+files = 0
+git_error_count = 0
+parse_error_count = 0
+unexpected_error_count = 0
+not_supported_files = []
+
+diff = 0
+i = 0
+
+for index, row in df.iterrows():
+    i += 1
+    if i % 500 == 0:
+        print(f"Processing row {i}")
+    try:
+        patch = PatchSet(row["code"][0])
+        with open(patch_path, "w") as f:
+            f.write(row["code"][0])
+        clean_git_repo(repo)
+        files += len(patch.modified_files)
+        paths = []
+        for file in patch.modified_files:
+            full_path = f"{kernel_base_path}/{file.path.strip("/")}"
+            if not (full_path.endswith(".c") or full_path.endswith(".h")):
+                not_supported_files.append(full_path)
+                continue
+            if not file.patch_info[1].strip():
+                parse_error_count += 1
+                continue
+            hash_a, _ = file.patch_info[1].split()[1].split("..")
+            base_content = repo.git.show(hash_a)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "w") as f:
+                f.write(base_content)
+            paths.append(full_path)
+        if not paths:
+            continue
+        res = subprocess.run(["cppcheck"] + paths, capture_output=True)
+        base_error_count = res.stderr.decode("utf-8").count(": error: ")
+        repo.git.apply(["--include=*.c", "--include=*.h", patch_path])
+        res = subprocess.run(["cppcheck"] + paths, capture_output=True)
+        apply_error_count = res.stderr.decode("utf-8").count(": error: ")
+        new_error_count = apply_error_count - base_error_count
+        diff += new_error_count
+        if new_error_count > 0:
+            print(f"Row {index}: Base errors: {base_error_count}, Apply errors: {apply_error_count}, New errors: {new_error_count}")
+    except GitCommandError as e:
+        print(f"Git command error for row {index}")
+        git_error_count += 1
+    except UnidiffParseError as e:
+        print(f"Unidiff parse error for row {index}")
+        parse_error_count += 1
+    except Exception as e:
+        print(f"Unexpected error for row {index}")
+        unexpected_error_count += 1
+
+clean_git_repo(repo)
+
+print(f"Total files processed: {files}")
+print(f"Total new errors introduced: {diff}")
+print(f"Git errors: {git_error_count}")
+print(f"Parse errors: {parse_error_count}")
+print(f"Unexpected errors: {unexpected_error_count}")
+print(f"Total errors: {git_error_count + parse_error_count + unexpected_error_count}")
+print(f"Not supported files: {len(not_supported_files)}")
+
+elapsed_time = time.time() - start_time
+print(f"Execution time: {elapsed_time:.2f} seconds")
+
+{% endhighlight %}
+</details>
+
+<details>
+  <summary>Batendo os resultados das análises de antes e depois dos 40.760 blobs temos:</summary>
+Saldo de 76 novos erros apontados
+</details>
+
+<br/>
+
+#### **Trabalhos Futuros**
+
+- Diversificar ferramentas de análise, yamllint, checkmake, etc..
+- Diversificar versões de ferramentas de análise por época
+- Análisar diferentes subsistemas
+- Otimizar estratégias de coleta de blobs e aplicação de patches
+- Refatorar o algoritmo
+- Apresentar resultados de maneira visual e intuitiva
+
+
+#### **Conclusão**
+
+O algoritmo proposto se mostrou funcional para identificar erros e correções ocasionados por novos patches no escopo estático do código fonte do linux. Com futuras expansões e refinamentos esse método pode trazer uma visão completa da qualidade de código e evolução do kernel Linux ao longo do tempo.

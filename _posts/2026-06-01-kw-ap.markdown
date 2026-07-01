@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Relato Contribuição no KW - Feature apply-patch"
+title: "Contribuição no KW - Feature apply-patch"
 date: 2026-06-01 19:00:00 -0300
 categories: jekyll update
 ---
